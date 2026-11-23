@@ -61,7 +61,7 @@ Unitree G1 29DoF、Jetson Orin NX、L4T R35.3.1、`ai_sport` 8.7.3.4。それ以
 
 ## ライセンス
 
-MIT（[LICENSE](LICENSE)）。第三者のコンポーネントはこのライセンスの対象外です（[docs/THIRD_PARTY.md](docs/THIRD_PARTY.md)）。
+MIT（[LICENSE](LICENSE)）。第三者のコンポーネントはこのライセンスの対象外です（[docs/THIRD_PARTY.md](docs/THIRD_PARTY.md)）。ロボットのイラストとアイコン（`web/index.html` 内の SVG）は AI アシスタントで生成したもので、Unitree の素材や他プロジェクトの画像は含みません。AI 生成物に著作権が成立するかは国や地域で異なるため、自由に再利用できるものとして扱ってください。
 
 ## 貢献・報告
 

@@ -15,6 +15,10 @@ This repository contains **no third-party code**. The hub (`server.py`, `g1conso
 
 - `g1console/lidar_sensor.py` talks to the LiDAR unit over its published control protocol. It is an independent implementation written for interoperability. No vendor code or SDK is included.
 
+## Artwork
+
+The robot illustration and the icons are inline SVG in `web/index.html`. They were generated with an AI assistant, are not copied from another project or from Unitree, and are offered under this repository's MIT license. No external image files, fonts or icon sets are included.
+
 ## Trademarks
 
 "Unitree" and "G1" are trademarks of their respective owners. They are used only to say which robot this works with. This project is not affiliated with or endorsed by Unitree Robotics.

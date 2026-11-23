@@ -171,4 +171,4 @@ Much of the code, tests and documentation was written with the help of an AI cod
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Third-party components are not covered by this license; see Runtime dependencies. The robot illustration and the icons in `web/index.html` are inline SVG that is part of this repository and covered by the same license. They are a generic drawing, not artwork supplied by Unitree.
+MIT. See [LICENSE](LICENSE). Third-party components are not covered by this license; see Runtime dependencies. The robot illustration and the icons in `web/index.html` are inline SVG that is part of this repository. They were generated with an AI assistant (see above) and are offered under the same license. They are a generic drawing, not artwork supplied by Unitree, and no third-party image files are included. Whether AI-generated artwork can be copyrighted depends on the jurisdiction, so treat them as freely reusable rather than as a protected design.
