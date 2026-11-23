@@ -5,6 +5,8 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-23
+
 ### Added
 - Initial public version: web console and hub for the Unitree G1, with token
   authentication, motion control with emergency stop, mode and action control,
