@@ -1,6 +1,6 @@
 # g1-console
 
-A small web console for the Unitree G1 humanoid robot. It runs on the robot's Jetson (PC2), shows the robot's state, and lets you operate it from a phone or a browser. `--mock` runs the whole thing without a robot.
+A small web console for the Unitree G1 humanoid robot. It runs on the robot's Jetson (PC2), shows the robot's state, and lets you operate it from a phone or a browser. `--mock` runs the whole thing without a robot. 日本語の概要は [README.ja.md](README.ja.md)。
 
 > **WARNING — read before use.** This software can send walking commands, mode changes (including damping and zero torque) and an emergency stop to a real robot. The software stop is **not** a certified safety function. Use it only with the physical remote controller in reach, at least two people present, a clear area around the robot, and the robot hanging or seated for first tests. Most functions have **not** been verified on a real robot; the UI marks them. Use at your own risk. See the [LICENSE](LICENSE) (no warranty).
 
@@ -146,7 +146,7 @@ python3 g1console/api_spec.py
 - The hub (`server.py` and `g1console/`) uses only the Python standard library.
 - On the Jetson, the helper processes in `jetson/` need `unitree_sdk2_python` (BSD-3-Clause) and its dependency `cyclonedds` (EPL-2.0 / EDL-1.0).
 - The camera and LiDAR streamers optionally use `numpy`, `opencv-python` and `pyrealsense2`.
-- None of these are included in or redistributed by this repository. Install them on the Jetson yourself and check their licenses.
+- None of these are included in or redistributed by this repository. Install them on the Jetson yourself and check their licenses. The list with licenses is in [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
 
 ## Safety notes for real-robot use
 
@@ -156,6 +156,19 @@ python3 g1console/api_spec.py
 - The effect of `SetFsmId` on a real robot is largely unverified. Start with low-risk transitions such as Seated Mode or standing up.
 - Do not expose the hub on a network you do not trust.
 
+## Related projects
+
+This is one of several tools for the G1. Others you may want to compare (I have not tested them with this project):
+
+- [UniRoboGui](https://github.com/ershui2500/UniRoboGui) (MIT): a C++ web GUI and dashboard for several Unitree robots, with SLAM, point clouds and speech features.
+- [unitree_sdk2](https://github.com/unitreerobotics/unitree_sdk2) (BSD-3-Clause): Unitree's official C++ SDK.
+
+The difference here: a hub that needs only the Python standard library, `--mock` for working without a robot, and a UI that marks every function not yet verified on a real robot.
+
+## About how this was written
+
+Much of the code, tests and documentation was written with the help of an AI coding assistant (Claude by Anthropic) under the maintainer's direction. Read the code before you run it on a robot, and see the warning at the top.
+
 ## License
 
-MIT. See [LICENSE](LICENSE). Third-party components are not covered by this license; see Runtime dependencies.
+MIT. See [LICENSE](LICENSE). Third-party components are not covered by this license; see Runtime dependencies. The robot illustration and the icons in `web/index.html` are inline SVG that is part of this repository and covered by the same license. They are a generic drawing, not artwork supplied by Unitree.

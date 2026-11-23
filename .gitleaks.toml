@@ -1,0 +1,8 @@
+# gitleaks configuration. Keeps the default rules and ignores one known fixture.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fixed tokens used only by the unit tests"
+regexes = ['''t0ken-for-tests_ABC''']
+paths = ['''tests/test_auth\.py''']
