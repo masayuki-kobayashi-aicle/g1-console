@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: tests (Python ${{ matrix.python }})
+    # ubuntu-22.04 still provides Python 3.8, which is what the Jetson runs.
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.8", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Unit tests (no robot needed)
+        run: bash tests/run_tests.sh
+      - name: Generated API docs are up to date
+        run: |
+          python3 g1console/api_spec.py
+          git diff --exit-code docs/API.md docs/openapi.yaml

@@ -1,0 +1,14 @@
+{
+  "title": "Smoke test (count 5 seconds)",
+  "description": "For checking that the task feature works. Does not touch the robot.",
+  "argv": [
+    "python3",
+    "-u",
+    "-c",
+    "import time\nfor i in range(5, 0, -1):\n    print('countdown', i)\n    time.sleep(1)\nprint('done')"
+  ],
+  "cwd": ".",
+  "group": "sample",
+  "timeout_s": 30,
+  "verified": true
+}

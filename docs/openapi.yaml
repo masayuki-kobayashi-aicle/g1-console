@@ -1,0 +1,2665 @@
+# Generated from api_spec.py (do not edit by hand)
+openapi: "3.0.3"
+info:
+  title: "G1 Console API"
+  version: "0.1.0"
+  description: "People see the state on the screen; client developers and AI agents read the same content and operate through this API.\nx-effect: read=read only / settings=changes only the console's settings / robot_write=writes to the G1 (sound, LED) / robot_motion=the G1 moves.\nx-real-robot-verified=false means unverified on the real robot. Errors: HTTP 400=invalid input / 404=undefined / 500=save failed / 502=cannot reach the G1 or Jetson, or the G1 rejected it. The body is always Error."
+servers:
+  - url: "http://127.0.0.1:{port}"
+    variables:
+      port:
+        default: "18790"
+tags:
+  - name: "ops"
+    description: "Ops tab (connection, mode)"
+  - name: "motion"
+    description: "Motion tab (replacement for the physical remote controller)"
+  - name: "tasks"
+    description: "Tasks tab (run predefined commands)"
+  - name: "state"
+    description: "State tab"
+  - name: "joints"
+    description: "Joints tab"
+  - name: "audio"
+    description: "Audio tab"
+  - name: "camera"
+    description: "Camera tab"
+  - name: "dds"
+    description: "DDS tab"
+  - name: "settings"
+    description: "Settings tab"
+  - name: "mock"
+    description: "Only active with --mock"
+paths:
+  "/api":
+    get:
+      operationId: "getApi"
+      tags:
+        - "ops"
+      summary: "This API definition (OpenAPI, JSON)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+  "/api/status":
+    get:
+      operationId: "getStatus"
+      tags:
+        - "ops"
+      summary: "Read this first. Connection (jetson/g1), current mode, staleness of the check, and whether automatic checks are stopped"
+      x-effect: "read"
+      description: "If jetson/g1 is not ok, do not trust the values beyond it. Even if ok, an age_s of several seconds or more means a stale value. Nothing is updated while paused=true."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Status"
+  "/api/state":
+    get:
+      operationId: "getState"
+      tags:
+        - "state"
+      summary: "Battery, IMU, odometry, main board, Jetson, remote controller, emergency stop"
+      x-effect: "read"
+      description: "notes.units_assumed / notes.unverified list the items whose units are assumed or whose meaning is unverified."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/State"
+  "/api/joints":
+    get:
+      operationId: "getJoints"
+      tags:
+        - "joints"
+      summary: "Angle, velocity, estimated torque, temperature and command values of the 29 joints"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Joints"
+  "/api/snapshot":
+    get:
+      operationId: "getSnapshot"
+      tags:
+        - "ops"
+      summary: "Get state and joints in one call (this one call is enough to grasp the situation)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Snapshot"
+  "/api/audio/volume":
+    get:
+      operationId: "getVolume"
+      tags:
+        - "audio"
+      summary: "Read the speaker volume from the G1 (actually queries it via the Jetson)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Volume"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+    post:
+      operationId: "postVolume"
+      tags:
+        - "audio"
+      summary: "Set the volume, then read it back and confirm it matches"
+      x-effect: "robot_write"
+      description: "If volume_after equals the requested value, it has taken effect."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/VolumePatch"
+            example:
+              volume: 40
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/VolumeSet"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/motion/status":
+    get:
+      operationId: "getMotionStatus"
+      tags:
+        - "motion"
+      summary: "State of motion control (operator, target velocity, reason it cannot move, most recent event)"
+      x-effect: "read"
+      description: "If last_event.kind is lost, the robot stopped and the lock was released because the link was lost. If blocked is not null, it will not move for that reason."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MotionStatus"
+  "/api/tasks":
+    get:
+      operationId: "getTasks"
+      tags:
+        - "tasks"
+      summary: "List of runnable tasks and the state of each one's most recent run"
+      x-effect: "read"
+      description: "Definitions come only from tasks/*.json. Clients cannot add any."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Tasks"
+  "/api/tasks/logs":
+    get:
+      operationId: "getTaskLogs"
+      tags:
+        - "tasks"
+      summary: "Task log (line by line). Query: name and since (last seq seen)"
+      x-effect: "read"
+      description: "Passing next as the next since reads only the continuation, with no gaps or duplicates. The ring buffer holds 2000 lines; when it overflows, truncated=true."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/TaskLogs"
+        "400":
+          description: "Invalid input (since)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "Task not in the definitions"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/topics":
+    get:
+      operationId: "getTopics"
+      tags:
+        - "dds"
+      summary: "Topic communication policy (always refused, publish allowlist, subscribed)"
+      x-effect: "read"
+      description: "Only with --local / --mock. Receiving is free (only types that can be read); publishing is only String_ in the allowlist. Motion, joint, arm and RPC topics are always refused."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Topics"
+  "/api/topics/received":
+    get:
+      operationId: "getTopicsReceived"
+      tags:
+        - "dds"
+      summary: "Latest message and reception status of the subscribed topics"
+      x-effect: "read"
+      description: "With 0 subscriptions it does not start the helper and returns an empty result. If age_s is null, nothing has ever been received (not necessarily an error)."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/TopicsReceived"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/cameras":
+    get:
+      operationId: "getCameras"
+      tags:
+        - "camera"
+      summary: "List of cameras and whether streaming is configured (video is GET /camera/{name})"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Cameras"
+  "/api/camera/status":
+    get:
+      operationId: "getCameraStatus"
+      tags:
+        - "camera"
+      summary: "Start state of camera_stream, and processes holding the video device (foreign = not our own)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/lidar/status":
+    get:
+      operationId: "getLidarStatus"
+      tags:
+        - "camera"
+      summary: "Start state of lidar_stream (point cloud stream on the Jetson)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/lidar":
+    get:
+      operationId: "getLidar"
+      tags:
+        - "camera"
+      summary: "Latest single frame of the LiDAR point cloud (decimated by default). Repeated float32 little-endian (x,y,z,intensity). The point count is in X-Lidar-Points"
+      x-effect: "read"
+      description: "Coordinates are left in livox_frame (unit m). May be tilted relative to the G1's orientation. The query voxel (voxel width in m, 0 to 1, 0 disables decimation, default 0.1) and max (maximum points 100 to 30000, default 5000) set the decimation strength. Out-of-range values are ignored and the default is used."
+      parameters:
+        - name: "voxel"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            minimum: 0
+            maximum: 1
+        - name: "max"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            minimum: 100
+            maximum: 30000
+      responses:
+        "200":
+          description: "Point cloud binary (16 bytes x number of points). With X-Lidar-Seq / X-Lidar-Points / X-Lidar-Age-Ms headers"
+          content:
+            "application/octet-stream":
+              schema:
+                type: "string"
+        "404":
+          description: "LiDAR not configured (enter the Jetson IP on the Settings tab)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the stream source. Check that lidar_stream is running"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/dds":
+    get:
+      operationId: "getDds"
+      tags:
+        - "dds"
+      summary: "Ledger of DDS topics and RPC services (displayed / not implemented / excluded)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Dds"
+  "/api/buttons":
+    get:
+      operationId: "getButtons"
+      tags:
+        - "ops"
+      summary: "Modes that can be switched to. Choose the id for POST /api/mode from here"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Buttons"
+  "/api/features":
+    get:
+      operationId: "getFeatures"
+      tags:
+        - "dds"
+      summary: "implemented / verified per feature (verified=false means unverified on the real robot)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Features"
+  "/api/settings":
+    get:
+      operationId: "getSettings"
+      tags:
+        - "settings"
+      summary: "Connection target settings (development PC / Jetson / G1 IP, etc.)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Settings"
+    post:
+      operationId: "postSettings"
+      tags:
+        - "settings"
+      summary: "Save the connection target and apply it (changing the Jetson re-establishes ssh)"
+      x-effect: "settings"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SettingsPatch"
+            example:
+              jetson_host: "192.168.123.164"
+              g1_ip: "192.168.123.161"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Settings"
+        "400":
+          description: "Invalid input (not an IP or hostname, out of range, etc. The reason is in error)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "500":
+          description: "Cannot save"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/scenarios":
+    get:
+      operationId: "getScenarios"
+      tags:
+        - "mock"
+      summary: "List of mock scenarios and the current one"
+      x-effect: "read"
+      x-mock-only: true
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Scenarios"
+  "/camera/{name}":
+    get:
+      operationId: "getCamera"
+      tags:
+        - "camera"
+      summary: "Camera video (MJPEG stream). name is a key of GET /api/cameras"
+      x-effect: "read"
+      parameters:
+        - name: "name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "std"
+              - "d435i"
+      responses:
+        "200":
+          description: "MJPEG stream (never ends)"
+          content:
+            "multipart/x-mixed-replace":
+              schema:
+                type: "string"
+                format: "binary"
+        "404":
+          description: "Camera not configured or name is invalid"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the stream source"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/openapi.yaml":
+    get:
+      operationId: "getOpenapiYaml"
+      tags:
+        - "ops"
+      summary: "This API definition (OpenAPI, YAML)"
+      x-effect: "read"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/yaml":
+              schema:
+                type: "string"
+  "/api/topics/subscribe":
+    post:
+      operationId: "postTopicSubscribe"
+      tags:
+        - "dds"
+      summary: "Subscribe to a topic (starts the helper the first time)"
+      x-effect: "settings"
+      description: "Do not guess the type from the name. The caller looks at type in GET /api/dds and specifies only one that is in supported_types."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TopicSubscribePatch"
+            example:
+              topic: "rt/rtc/state"
+              type: "String_"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/TopicSubscribed"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Subscription limit"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "422":
+          description: "Type cannot be read"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/topics/unsubscribe":
+    post:
+      operationId: "postTopicUnsubscribe"
+      tags:
+        - "dds"
+      summary: "Stop subscribing"
+      x-effect: "settings"
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TopicNamePatch"
+            example:
+              topic: "rt/rtc/state"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/TopicUnsubscribed"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "Not subscribed"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/topics/publish":
+    post:
+      operationId: "postTopicPublish"
+      tags:
+        - "dds"
+      summary: "Send a String_ to a topic in the allowlist. **Goes out on the G1's DDS**"
+      x-effect: "robot_write"
+      description: "The deny list (motion, joint, arm, RPC, etc.) is not overridden by putting a topic in the allowlist. The allowlist is only the server-side --topics-file and cannot be extended from the UI or API."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TopicPublishPatch"
+            example:
+              topic: "rt/console_demo/say"
+              data: "hello"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/TopicPublished"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "403":
+          description: "Always-refused topic, or not in the allowlist"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "413":
+          description: "Exceeds max_bytes"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "429":
+          description: "Faster than the minimum interval"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/camera/start":
+    post:
+      operationId: "postCameraStart"
+      tags:
+        - "camera"
+      summary: "Start camera_stream.py on the Jetson (does not restart. May fail if something else holds the device)"
+      x-effect: "settings"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/camera/stop":
+    post:
+      operationId: "postCameraStop"
+      tags:
+        - "camera"
+      summary: "Stop only camera_stream.py (does not stop other processes such as videohub)"
+      x-effect: "settings"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/lidar/start":
+    post:
+      operationId: "postLidarStart"
+      tags:
+        - "camera"
+      summary: "Start lidar_stream.py on the Jetson (only subscribes to DDS. Does not restart)"
+      x-effect: "settings"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/lidar/stop":
+    post:
+      operationId: "postLidarStop"
+      tags:
+        - "camera"
+      summary: "Stop only lidar_stream.py"
+      x-effect: "settings"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/lidar/sensor":
+    get:
+      operationId: "getLidarSensor"
+      tags:
+        - "camera"
+      summary: "Read the operating mode of the LiDAR unit (Livox work_tgt_mode)"
+      x-effect: "read"
+      description: "Only with --local / --mock. mode: 1=measuring (SAMPLING) / 2=standby (IDLE, laser off) / 9=ready (READY). laser_off is true when mode=2."
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/lidar/sensor/idle":
+    post:
+      operationId: "postLidarSensorIdle"
+      tags:
+        - "camera"
+      summary: "Put the LiDAR unit in standby (IDLE). **The laser stops and no point cloud arrives**"
+      x-effect: "settings"
+      description: "Returns the mode read back after setting. Anything that uses the point cloud (such as mapping) stops working. Power cycling returns it to measuring."
+      x-real-robot-verified: false
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/lidar/sensor/sampling":
+    post:
+      operationId: "postLidarSensorSampling"
+      tags:
+        - "camera"
+      summary: "Return the LiDAR unit to measuring (SAMPLING)"
+      x-effect: "settings"
+      x-real-robot-verified: false
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                additionalProperties: true
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/monitor":
+    post:
+      operationId: "postMonitor"
+      tags:
+        - "ops"
+      summary: "Stop / resume automatic checks and reconnection, or check just once"
+      x-effect: "settings"
+      description: "While stopped, the server touches neither ssh nor DDS. Explicit operations such as mode switching can still be run while stopped."
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MonitorPatch"
+            example:
+              paused: true
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Monitor"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/hub/stop":
+    post:
+      operationId: "postHubStop"
+      tags:
+        - "settings"
+      summary: "Stop the hub (this console) itself. It cannot be restarted from the screen"
+      x-effect: "settings"
+      description: "Exits after responding (exit code 0; it is not restarted by systemd's Restart=on-failure). After it stops, restart it on the Jetson. The camera and LiDAR streams are separate processes and are expected not to stop (unverified)."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/HubStopPatch"
+            example:
+              confirm: true
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/HubStopAck"
+        "400":
+          description: "Invalid input (confirm is not true)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "A task is running, or the motion operator lock is held"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/mode":
+    post:
+      operationId: "postMode"
+      tags:
+        - "ops"
+      summary: "Switch the G1 mode (FSM). **The robot moves**"
+      x-effect: "robot_motion"
+      description: "Acceptance (set_code=0) does not mean it was reached. After running, read GET /api/status repeatedly and check that mode.fsm_id becomes the target (about 15 seconds as a guide). Switching while walking (500/501) risks a fall. Always confirm with a person before running. Unverified on the real robot."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ModePatch"
+            example:
+              id: 3
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ModeAck"
+        "400":
+          description: "Invalid input (id not allowed)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/speed":
+    post:
+      operationId: "postSpeed"
+      tags:
+        - "ops"
+      summary: "Switch the speed mode (SetSpeedMode). **The robot's walking speed changes**"
+      x-effect: "robot_motion"
+      description: "The meaning of value (which is slower) is undocumented and unverified. There is no way to read it back. Send only while walking (500/501)."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SpeedPatch"
+            example:
+              value: 0
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ModeAck"
+        "400":
+          description: "Invalid input (value not allowed)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/tasks/start":
+    post:
+      operationId: "postTaskStart"
+      tags:
+        - "tasks"
+      summary: "Start a predefined task (pass only the name). Depending on the task, the robot may move"
+      x-effect: "settings"
+      description: "Does not go through a shell. After starting, check the result with GET /api/tasks/logs and state / result / exit_code of GET /api/tasks. A task with verified=false is unverified on the real robot, and caution is the warning text (the UI shows it in a dialog before running)."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TaskNamePatch"
+            example:
+              name: "sample-countdown"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Task"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "Task not in the definitions"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "The same task or the same exclusive group is running"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "500":
+          description: "Cannot start"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/tasks/stop":
+    post:
+      operationId: "postTaskStop"
+      tags:
+        - "tasks"
+      summary: "Stop a running task (SIGTERM to the process group, SIGKILL after a grace period)"
+      x-effect: "settings"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TaskNamePatch"
+            example:
+              name: "sample-countdown"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Task"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "404":
+          description: "Task not in the definitions"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Not running"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/motion/claim":
+    post:
+      operationId: "postMotionClaim"
+      tags:
+        - "motion"
+      summary: "Take the operator lock (starts the motion helper. Takes a few seconds the first time)"
+      x-effect: "robot_write"
+      description: "There is one operator. It does not resume automatically after a lost link, emergency stop or release, so claim again."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MotionClaimPatch"
+            example: {}
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MotionClaim"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "Someone else is operating"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "The motion helper does not start"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "503":
+          description: "Unavailable because --local is not set"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/motion/ctl":
+    post:
+      operationId: "postMotionCtl"
+      tags:
+        - "motion"
+      summary: "Send the target velocity. **The robot moves**. Keep sending at 10 Hz (if the signal is lost for 0.5 seconds it stops and the operator lock is released)"
+      x-effect: "robot_motion"
+      description: "Does not move unless the FSM is 500/501 (the reason is in blocked). Velocity is clamped to the limits (initial values, unverified on the real robot). Do not send when nobody is watching. Keep the physical remote controller at hand."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MotionCtlPatch"
+            example:
+              session: "example"
+              seq: 1
+              vx: 0.0
+              vy: 0.0
+              wz: 0.0
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MotionStatus"
+        "400":
+          description: "Invalid input (not a number, not finite)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "No operator lock"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/motion/release":
+    post:
+      operationId: "postMotionRelease"
+      tags:
+        - "motion"
+      summary: "Give up the operator lock (sets zero velocity)"
+      x-effect: "robot_motion"
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MotionSessionPatch"
+            example:
+              session: "example"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MotionStatus"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "No operator lock"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/motion/estop":
+    post:
+      operationId: "postMotionEstop"
+      tags:
+        - "motion"
+      summary: "Emergency stop. Sends zero velocity plus StopMove and releases the operator lock (anyone can press it, even without the lock)"
+      x-effect: "robot_motion"
+      description: "Does not go to damping or zero torque (keeps the autonomous upright posture). **A software stop does not meet any safety standard. The last resort is the physical remote controller.**"
+      x-real-robot-verified: false
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MotionStatus"
+  "/api/motion/action":
+    post:
+      operationId: "postMotionAction"
+      tags:
+        - "motion"
+      summary: "Action (wave, handshake). **The robot moves**"
+      x-effect: "robot_motion"
+      description: "The SetTaskId numbers and effects are unverified on the real robot. End a handshake with shake_end after the start."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MotionActionPatch"
+            example:
+              session: "example"
+              name: "wave"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MotionStatus"
+        "400":
+          description: "Invalid input (action not allowed)"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "409":
+          description: "No operator lock, or not in a walking mode"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/audio/led":
+    post:
+      operationId: "postLed"
+      tags:
+        - "audio"
+      summary: "Set the color of the head LED"
+      x-effect: "robot_write"
+      description: "code=0 only means accepted. Check by eye whether the color changed (it cannot be read back)."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/LedPatch"
+            example:
+              r: 0
+              g: 255
+              b: 0
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Ack"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/audio/tts":
+    post:
+      operationId: "postTts"
+      tags:
+        - "audio"
+      summary: "Speak the text"
+      x-effect: "robot_write"
+      description: "code=0 only means accepted. Check by ear whether sound came out."
+      x-real-robot-verified: false
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/TtsPatch"
+            example:
+              text: "Hello"
+              speaker_id: 0
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Ack"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+        "502":
+          description: "Cannot reach the G1 or Jetson, or the G1 rejected it"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/scenario":
+    post:
+      operationId: "postScenario"
+      tags:
+        - "mock"
+      summary: "Switch the mock scenario"
+      x-effect: "settings"
+      x-mock-only: true
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ScenarioPatch"
+            example:
+              scenario: "g1_off"
+      responses:
+        "200":
+          description: "Success"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Scenario"
+        "400":
+          description: "Invalid input"
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/Error"
+components:
+  schemas:
+    Error:
+      type: "object"
+      description: "Error body (common to all endpoints). A 502 where the G1 / Jetson cannot be reached also carries raw details such as ok=false, offline and ssh_exit"
+      properties:
+        error:
+          type: "string"
+          description: "Plain-language reason"
+      required:
+        - "error"
+      additionalProperties: true
+    Link:
+      type: "object"
+      description: "State of one connection hop. If jetson is down, g1 is unknown"
+      properties:
+        state:
+          type: "string"
+          description: "ok=reachable / down=unreachable / unknown=not visible because an upstream link is down"
+          enum:
+            - "ok"
+            - "down"
+            - "unknown"
+            - "checking"
+        detail:
+          type: "string"
+          description: "Reason (same as the diagnostic text on screen)"
+      required:
+        - "state"
+        - "detail"
+      additionalProperties: false
+    Mode:
+      type: "object"
+      description: "Current mode"
+      properties:
+        state:
+          type: "string"
+          description: "ok=regular mode and the FSM ID was obtained / debug=debug mode / unknown=not obtainable / none=not connected"
+          enum:
+            - "ok"
+            - "debug"
+            - "unknown"
+            - "none"
+        label:
+          type: "string"
+          description: "Display name"
+        fsm_id:
+          type: "integer"
+          description: "FSM ID (only when state=ok)"
+        service:
+          type: "string"
+          description: "Motion service name"
+        detail:
+          type: "string"
+      required:
+        - "state"
+        - "label"
+      additionalProperties: false
+    Control:
+      type: "object"
+      description: "Whether arm control is enabled and whether the legs are autonomous (computed from reads only)"
+      properties:
+        arm:
+          type: "object"
+          description: "Whether arm control is enabled. Judged by the mode in the state side (lowstate), not the command side (lowcmd)"
+          properties:
+            state:
+              type: "string"
+              description: "enabled=all 14 arm axes have motors enabled / disabled=all disabled (zero torque) / partial=only some / unknown=lowstate is stale or has no mode"
+              enum:
+                - "enabled"
+                - "disabled"
+                - "partial"
+                - "unknown"
+            label:
+              type: "string"
+              description: "Short verdict shown large on screen (Enabled / Disabled / Partial / Unknown)"
+            detail:
+              type: "string"
+              description: "Reason for the verdict (shown small on screen)"
+            enabled_count:
+              type: "integer"
+              description: "Number of arm joints whose motor_state.mode in rt/lowstate is 1"
+              nullable: true
+            total:
+              type: "integer"
+              description: "Number of arm joints (14)"
+            commanded:
+              type: "boolean"
+              description: "Whether rt/lowcmd arrived within the last second"
+              nullable: true
+          required:
+            - "state"
+            - "label"
+            - "detail"
+            - "total"
+          additionalProperties: false
+        legs:
+          type: "object"
+          description: "Whether the legs are autonomous (under the standard motion service)"
+          properties:
+            state:
+              type: "string"
+              description: "autonomous=the motion controller is controlling the legs / not_autonomous=zero torque, damping or debug mode"
+              enum:
+                - "autonomous"
+                - "not_autonomous"
+                - "unknown"
+            label:
+              type: "string"
+              description: "Short verdict shown large on screen (Autonomous / Not autonomous / Unknown)"
+            detail:
+              type: "string"
+              description: "Reason for the verdict (shown small on screen)"
+            fsm_id:
+              type: "integer"
+              description: "Only in a mode with state=ok"
+              nullable: true
+            enabled_count:
+              type: "integer"
+              description: "Number of the 12 leg joint axes whose motor_state.mode is 1"
+              nullable: true
+            total:
+              type: "integer"
+              description: "Number of leg joints (12)"
+          required:
+            - "state"
+            - "label"
+            - "detail"
+            - "total"
+          additionalProperties: false
+      required:
+        - "arm"
+        - "legs"
+      additionalProperties: false
+    Status:
+      type: "object"
+      description: "Connection, mode and freshness. Read this first"
+      properties:
+        jetson:
+          "$ref": "#/components/schemas/Link"
+        g1:
+          "$ref": "#/components/schemas/Link"
+        mode:
+          "$ref": "#/components/schemas/Mode"
+        control:
+          "$ref": "#/components/schemas/Control"
+        sampled_at:
+          type: "number"
+          description: "Time the G1 was last checked (epoch seconds). null=not checked yet"
+          nullable: true
+        age_s:
+          type: "number"
+          description: "Seconds since the last check. A large value means a stale reading"
+          nullable: true
+        latency_ms:
+          type: "integer"
+          description: "Round trip to the G1 in ms"
+          nullable: true
+        last_g1_ok_at:
+          type: "number"
+          nullable: true
+        last_mode:
+          type: "object"
+          description: "Last mode that could be confirmed (reference while disconnected. Not the current value)"
+          additionalProperties: true
+          nullable: true
+        paused:
+          type: "boolean"
+          description: "true=automatic checks and reconnection are stopped (values are not updated)"
+        poll_interval_s:
+          type: "number"
+        server:
+          type: "object"
+          properties:
+            backend:
+              type: "string"
+              description: "Display of the connection target"
+            mock:
+              type: "boolean"
+          required:
+            - "backend"
+            - "mock"
+          additionalProperties: false
+        telemetry:
+          type: "object"
+          description: "Raw telemetry from the helper (shaped by /api/state and /api/joints)"
+          additionalProperties: true
+          nullable: true
+      required:
+        - "jetson"
+        - "g1"
+        - "mode"
+        - "control"
+        - "sampled_at"
+        - "age_s"
+        - "paused"
+        - "server"
+      additionalProperties: false
+    State:
+      type: "object"
+      description: "State tab. A null value means not received or not connected"
+      properties:
+        jetson:
+          "$ref": "#/components/schemas/Link"
+        g1:
+          "$ref": "#/components/schemas/Link"
+        mode:
+          "$ref": "#/components/schemas/Mode"
+        control:
+          "$ref": "#/components/schemas/Control"
+        sampled_at:
+          type: "number"
+          description: "Time the G1 was last checked (epoch seconds). null=not checked yet"
+          nullable: true
+        age_s:
+          type: "number"
+          description: "Seconds since the last check. A large value means a stale reading"
+          nullable: true
+        battery:
+          type: "object"
+          description: "soc[%], voltage, current, temperature (units are assumed. See notes)"
+          additionalProperties: true
+          nullable: true
+        imu:
+          type: "object"
+          description: "rpy[rad], gyro, accel, temperature"
+          additionalProperties: true
+          nullable: true
+        imu2:
+          type: "object"
+          additionalProperties: true
+          nullable: true
+        odom:
+          type: "object"
+          description: "Estimated from the start position. Drifts"
+          additionalProperties: true
+          nullable: true
+        mainboard:
+          type: "object"
+          description: "Meaning of value is unverified (raw values)"
+          additionalProperties: true
+          nullable: true
+        system:
+          type: "object"
+          description: "Jetson temperature, load, etc."
+          additionalProperties: true
+          nullable: true
+        remote:
+          type: "object"
+          description: "Remote controller input. null if nothing received"
+          additionalProperties: true
+          nullable: true
+        estop:
+          type: "object"
+          description: "Emergency stop. null if nothing received"
+          additionalProperties: true
+          nullable: true
+        strings:
+          type: "object"
+          additionalProperties: true
+          nullable: true
+        ages:
+          type: "object"
+          description: "Seconds since the last reception per topic"
+          additionalProperties: true
+          nullable: true
+        notes:
+          type: "object"
+          description: "Items whose units are assumed or whose meaning is unverified"
+          properties:
+            units_assumed:
+              type: "array"
+              items:
+                type: "string"
+            unverified:
+              type: "array"
+              items:
+                type: "string"
+          additionalProperties: false
+      required:
+        - "jetson"
+        - "g1"
+        - "mode"
+        - "control"
+        - "sampled_at"
+        - "age_s"
+        - "notes"
+      additionalProperties: false
+    Joints:
+      type: "object"
+      description: "Joints tab"
+      properties:
+        jetson:
+          "$ref": "#/components/schemas/Link"
+        g1:
+          "$ref": "#/components/schemas/Link"
+        mode:
+          "$ref": "#/components/schemas/Mode"
+        control:
+          "$ref": "#/components/schemas/Control"
+        sampled_at:
+          type: "number"
+          description: "Time the G1 was last checked (epoch seconds). null=not checked yet"
+          nullable: true
+        age_s:
+          type: "number"
+          description: "Seconds since the last check. A large value means a stale reading"
+          nullable: true
+        mode_machine:
+          type: "integer"
+          nullable: true
+        age_s_joints:
+          type: "number"
+          nullable: true
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer"
+              name:
+                type: "string"
+                description: "Name by SDK order (unverified on the real robot)"
+              q:
+                type: "number"
+                description: "Angle in rad"
+              dq:
+                type: "number"
+                description: "Velocity in rad/s"
+              tau:
+                type: "number"
+                description: "Estimated torque"
+              temperature:
+                type: "array"
+                items:
+                  type: "number"
+              mode:
+                type: "integer"
+                description: "motor_state.mode in rt/lowstate (1=enabled / 0=zero torque). Absent with an old helper"
+              cmd:
+                type: "object"
+                description: "Command values from lowcmd. Only the last command that flowed remains; this is not the current enabled state"
+                additionalProperties: true
+                nullable: true
+            required:
+              - "index"
+              - "name"
+            additionalProperties: true
+          description: "29 joint axes (empty if not connected)"
+        notes:
+          type: "object"
+          properties:
+            unverified:
+              type: "array"
+              items:
+                type: "string"
+          additionalProperties: false
+      required:
+        - "jetson"
+        - "g1"
+        - "mode"
+        - "control"
+        - "sampled_at"
+        - "age_s"
+        - "items"
+      additionalProperties: false
+    Snapshot:
+      type: "object"
+      description: "state and joints combined"
+      properties:
+        jetson:
+          "$ref": "#/components/schemas/Link"
+        g1:
+          "$ref": "#/components/schemas/Link"
+        mode:
+          "$ref": "#/components/schemas/Mode"
+        control:
+          "$ref": "#/components/schemas/Control"
+        sampled_at:
+          type: "number"
+          description: "Time the G1 was last checked (epoch seconds). null=not checked yet"
+          nullable: true
+        age_s:
+          type: "number"
+          description: "Seconds since the last check. A large value means a stale reading"
+          nullable: true
+        tabs:
+          type: "array"
+          items:
+            type: "string"
+          description: "List of tab names (= URL hash = API name)"
+        state:
+          "$ref": "#/components/schemas/State"
+        joints:
+          "$ref": "#/components/schemas/Joints"
+      required:
+        - "jetson"
+        - "g1"
+        - "mode"
+        - "control"
+        - "sampled_at"
+        - "age_s"
+        - "tabs"
+        - "state"
+        - "joints"
+      additionalProperties: false
+    Volume:
+      type: "object"
+      properties:
+        ok:
+          type: "boolean"
+        code:
+          type: "integer"
+          description: "0=accepted by the G1"
+        volume:
+          type: "integer"
+          description: "0 to 100"
+          minimum: 0
+          maximum: 100
+      required:
+        - "ok"
+        - "code"
+        - "volume"
+      additionalProperties: true
+    VolumeSet:
+      type: "object"
+      properties:
+        ok:
+          type: "boolean"
+        set_code:
+          type: "integer"
+        read_code:
+          type: "integer"
+        volume_after:
+          type: "integer"
+          description: "Value read back. If it equals the requested value, it has taken effect"
+      required:
+        - "ok"
+        - "set_code"
+        - "read_code"
+        - "volume_after"
+      additionalProperties: true
+    Ack:
+      type: "object"
+      properties:
+        ok:
+          type: "boolean"
+        code:
+          type: "integer"
+          description: "0=accepted by the G1 (confirm the effect by eye or ear)"
+      required:
+        - "ok"
+        - "code"
+      additionalProperties: true
+    ModeAck:
+      type: "object"
+      properties:
+        ok:
+          type: "boolean"
+        set_code:
+          type: "integer"
+          description: "0=accepted by the G1. This does not mean it was reached"
+      required:
+        - "ok"
+        - "set_code"
+      additionalProperties: true
+    Cameras:
+      type: "object"
+      properties:
+        enabled:
+          type: "boolean"
+          description: "Whether the stream source (camera_stream.py on the Jetson) is configured"
+        cameras:
+          type: "object"
+          additionalProperties:
+            type: "string"
+          description: "name -> display name"
+      required:
+        - "enabled"
+        - "cameras"
+      additionalProperties: false
+    Dds:
+      type: "object"
+      properties:
+        topics:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              topic:
+                type: "string"
+              type:
+                type: "string"
+              status:
+                type: "string"
+                description: "displayed / not subscribed (not implemented) / excluded"
+                enum:
+                  - "displayed"
+                  - "todo"
+                  - "excluded"
+              note:
+                type: "string"
+            required:
+              - "topic"
+              - "type"
+              - "status"
+              - "note"
+            additionalProperties: false
+        services:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              name:
+                type: "string"
+              status:
+                type: "string"
+              note:
+                type: "string"
+            required:
+              - "name"
+              - "status"
+              - "note"
+            additionalProperties: false
+      required:
+        - "topics"
+        - "services"
+      additionalProperties: false
+    Buttons:
+      type: "object"
+      properties:
+        buttons:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "integer"
+                description: "id for POST /api/mode"
+              label:
+                type: "string"
+              danger:
+                type: "boolean"
+            required:
+              - "id"
+              - "label"
+              - "danger"
+            additionalProperties: false
+        transitions:
+          type: "object"
+          description: "Current FSM ID (as a string) -> ids of the buttons that can be pressed on screen. Follows the official state transition diagram"
+          additionalProperties: true
+          nullable: true
+        fallback:
+          type: "array"
+          items:
+            type: "integer"
+          description: "Ids of the buttons that can be pressed when the current value is not in transitions"
+        speed:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              value:
+                type: "integer"
+                description: "value for POST /api/speed"
+              label:
+                type: "string"
+            required:
+              - "value"
+              - "label"
+            additionalProperties: false
+        speed_fsm_ids:
+          type: "array"
+          items:
+            type: "integer"
+          description: "Current FSM IDs from which a speed mode can be sent (only while walking)"
+      required:
+        - "buttons"
+        - "transitions"
+        - "fallback"
+        - "speed"
+        - "speed_fsm_ids"
+      additionalProperties: false
+    SpeedPatch:
+      type: "object"
+      properties:
+        value:
+          type: "integer"
+          description: "Only a value listed in speed of GET /api/buttons"
+      required:
+        - "value"
+      additionalProperties: false
+    Features:
+      type: "object"
+      properties:
+        actions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+              label:
+                type: "string"
+              task_id:
+                type: "integer"
+            required:
+              - "id"
+              - "label"
+              - "task_id"
+            additionalProperties: false
+          description: "Actions that can be run"
+        features:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+              label:
+                type: "string"
+              implemented:
+                type: "boolean"
+              verified:
+                type: "boolean"
+                description: "false=unverified on the real robot. Do not assert results"
+              note:
+                type: "string"
+            required:
+              - "id"
+              - "label"
+              - "implemented"
+              - "verified"
+            additionalProperties: false
+        planned_modes:
+          type: "array"
+          items:
+            type: "object"
+            additionalProperties: true
+        planned_actions:
+          type: "array"
+          items:
+            type: "object"
+            additionalProperties: true
+      required:
+        - "features"
+      additionalProperties: false
+    SettingsValues:
+      type: "object"
+      properties:
+        dev_pc:
+          type: "string"
+          description: "IP of the development PC (display and record only)"
+        jetson_host:
+          type: "string"
+          description: "IP or hostname of the Jetson (target for ssh and the camera)"
+        jetson_user:
+          type: "string"
+          description: "If empty, leaves it to ~/.ssh/config"
+        jetson_key:
+          type: "string"
+          description: "Path of the ssh private key. Default if empty"
+        g1_ip:
+          type: "string"
+          description: "IP of the G1 itself (display and record only)"
+        camera_port:
+          type: "integer"
+          minimum: 1
+          maximum: 65535
+        lidar_port:
+          type: "integer"
+          minimum: 1
+          maximum: 65535
+      required:
+        - "dev_pc"
+        - "jetson_host"
+        - "jetson_user"
+        - "jetson_key"
+        - "g1_ip"
+        - "camera_port"
+        - "lidar_port"
+      additionalProperties: false
+    SettingsPatch:
+      type: "object"
+      description: "Only the specified items change (all optional)"
+      properties:
+        dev_pc:
+          type: "string"
+          description: "IP address or hostname. An empty string means unset"
+        jetson_host:
+          type: "string"
+        jetson_user:
+          type: "string"
+        jetson_key:
+          type: "string"
+        g1_ip:
+          type: "string"
+        camera_port:
+          type: "integer"
+          minimum: 1
+          maximum: 65535
+        lidar_port:
+          type: "integer"
+          minimum: 1
+          maximum: 65535
+      additionalProperties: false
+    Settings:
+      type: "object"
+      properties:
+        settings:
+          "$ref": "#/components/schemas/SettingsValues"
+        labels:
+          type: "object"
+          additionalProperties:
+            type: "string"
+      required:
+        - "settings"
+        - "labels"
+      additionalProperties: false
+    MonitorPatch:
+      type: "object"
+      description: "Either one, or both"
+      properties:
+        paused:
+          type: "boolean"
+          description: "true=stop / false=resume"
+        check:
+          type: "boolean"
+          description: "true=check just once"
+      additionalProperties: false
+    Monitor:
+      type: "object"
+      properties:
+        paused:
+          type: "boolean"
+      required:
+        - "paused"
+      additionalProperties: false
+    HubStopPatch:
+      type: "object"
+      properties:
+        confirm:
+          type: "boolean"
+          description: "Stops only when true. 400 if absent"
+      required:
+        - "confirm"
+      additionalProperties: false
+    HubStopAck:
+      type: "object"
+      properties:
+        ok:
+          type: "boolean"
+        message:
+          type: "string"
+      required:
+        - "ok"
+        - "message"
+      additionalProperties: false
+    Scenarios:
+      type: "object"
+      properties:
+        scenarios:
+          type: "object"
+          additionalProperties:
+            type: "string"
+        current:
+          type: "string"
+      required:
+        - "scenarios"
+        - "current"
+      additionalProperties: false
+    ScenarioPatch:
+      type: "object"
+      properties:
+        scenario:
+          type: "string"
+      required:
+        - "scenario"
+      additionalProperties: false
+    Scenario:
+      type: "object"
+      properties:
+        scenario:
+          type: "string"
+      required:
+        - "scenario"
+      additionalProperties: false
+    MotionStatus:
+      type: "object"
+      description: "State of motion control"
+      properties:
+        state:
+          type: "string"
+          description: "idle=no operator / active=has an operator"
+          enum:
+            - "idle"
+            - "active"
+        operator:
+          type: "boolean"
+          description: "Whether an operator exists"
+        moving:
+          type: "boolean"
+          description: "Whether the hub is currently sending velocity commands"
+        target:
+          type: "object"
+          description: "Current target velocity (already clamped to the limits)"
+          properties:
+            vx:
+              type: "number"
+              description: "m/s"
+            vy:
+              type: "number"
+              description: "m/s"
+            wz:
+              type: "number"
+              description: "rad/s"
+          required:
+            - "vx"
+            - "vy"
+            - "wz"
+          additionalProperties: false
+        blocked:
+          type: "string"
+          description: "Reason it will not move (not in a walking mode, state is stale, etc.). null=can move"
+          nullable: true
+        last_rx_age_s:
+          type: "number"
+          description: "Seconds since the operator's last ctl. Automatically stops beyond 0.5"
+          nullable: true
+        last_event:
+          type: "object"
+          description: "Most recent event {kind: claim/lost/estop/release/takeover/disabled/sender_error/shutdown, detail, at}. This shows whether the lock was released by a lost link"
+          additionalProperties: true
+          nullable: true
+        sender:
+          type: "object"
+          properties:
+            backend:
+              type: "string"
+              description: "local / mock / unavailable"
+            error:
+              type: "string"
+              description: "Most recent send failure"
+              nullable: true
+          required:
+            - "backend"
+            - "error"
+          additionalProperties: false
+        limits:
+          type: "object"
+          description: "[min, max] of vx / vy / wz. Initial values, unverified on the real robot"
+          additionalProperties: true
+          nullable: true
+        timing:
+          type: "object"
+          properties:
+            send_period_s:
+              type: "number"
+            duration_s:
+              type: "number"
+              description: "Validity time of SetVelocity"
+            liveness_s:
+              type: "number"
+              description: "Stops if ctl is lost for this many seconds"
+          additionalProperties: false
+      required:
+        - "state"
+        - "operator"
+        - "moving"
+        - "target"
+        - "blocked"
+        - "sender"
+      additionalProperties: true
+    MotionClaim:
+      type: "object"
+      description: "Result of taking the operator lock"
+      properties:
+        state:
+          type: "string"
+          description: "idle=no operator / active=has an operator"
+          enum:
+            - "idle"
+            - "active"
+        operator:
+          type: "boolean"
+          description: "Whether an operator exists"
+        moving:
+          type: "boolean"
+          description: "Whether the hub is currently sending velocity commands"
+        target:
+          type: "object"
+          description: "Current target velocity (already clamped to the limits)"
+          properties:
+            vx:
+              type: "number"
+              description: "m/s"
+            vy:
+              type: "number"
+              description: "m/s"
+            wz:
+              type: "number"
+              description: "rad/s"
+          required:
+            - "vx"
+            - "vy"
+            - "wz"
+          additionalProperties: false
+        blocked:
+          type: "string"
+          description: "Reason it will not move (not in a walking mode, state is stale, etc.). null=can move"
+          nullable: true
+        last_rx_age_s:
+          type: "number"
+          description: "Seconds since the operator's last ctl. Automatically stops beyond 0.5"
+          nullable: true
+        last_event:
+          type: "object"
+          description: "Most recent event {kind: claim/lost/estop/release/takeover/disabled/sender_error/shutdown, detail, at}. This shows whether the lock was released by a lost link"
+          additionalProperties: true
+          nullable: true
+        sender:
+          type: "object"
+          properties:
+            backend:
+              type: "string"
+              description: "local / mock / unavailable"
+            error:
+              type: "string"
+              description: "Most recent send failure"
+              nullable: true
+          required:
+            - "backend"
+            - "error"
+          additionalProperties: false
+        limits:
+          type: "object"
+          description: "[min, max] of vx / vy / wz. Initial values, unverified on the real robot"
+          additionalProperties: true
+          nullable: true
+        timing:
+          type: "object"
+          properties:
+            send_period_s:
+              type: "number"
+            duration_s:
+              type: "number"
+              description: "Validity time of SetVelocity"
+            liveness_s:
+              type: "number"
+              description: "Stops if ctl is lost for this many seconds"
+          additionalProperties: false
+        session:
+          type: "string"
+          description: "ID of the operator lock to attach to later ctl / release / action calls"
+      required:
+        - "state"
+        - "operator"
+        - "moving"
+        - "target"
+        - "blocked"
+        - "sender"
+        - "session"
+      additionalProperties: true
+    MotionClaimPatch:
+      type: "object"
+      description: "All optional"
+      properties:
+        takeover:
+          type: "boolean"
+          description: "true=take the operator lock from someone else (the other side stops)"
+      additionalProperties: false
+    MotionCtlPatch:
+      type: "object"
+      description: "Values beyond the limits are clamped by the server"
+      properties:
+        session:
+          type: "string"
+        seq:
+          type: "integer"
+          description: "Increasing number. Smaller or equal ones are discarded"
+        vx:
+          type: "number"
+          description: "Forward/back m/s"
+        vy:
+          type: "number"
+          description: "Left/right m/s"
+        wz:
+          type: "number"
+          description: "Turn rad/s"
+      required:
+        - "session"
+        - "seq"
+        - "vx"
+        - "vy"
+        - "wz"
+      additionalProperties: false
+    MotionSessionPatch:
+      type: "object"
+      properties:
+        session:
+          type: "string"
+      required:
+        - "session"
+      additionalProperties: false
+    MotionActionPatch:
+      type: "object"
+      properties:
+        session:
+          type: "string"
+        name:
+          type: "string"
+          description: "id in actions of GET /api/features"
+          enum:
+            - "wave"
+            - "wave_turn"
+            - "shake_start"
+            - "shake_end"
+      required:
+        - "session"
+        - "name"
+      additionalProperties: false
+    Task:
+      type: "object"
+      description: "Task definition and the state of its most recent run"
+      properties:
+        name:
+          type: "string"
+          description: "Task name (tasks/<name>.json)"
+        title:
+          type: "string"
+        description:
+          type: "string"
+        argv:
+          type: "array"
+          items:
+            type: "string"
+          description: "The command that is run (array. Does not go through a shell)"
+        group:
+          type: "string"
+          description: "Exclusive group. Tasks in the same group are never run at the same time"
+          nullable: true
+        timeout_s:
+          type: "number"
+          description: "SIGTERM after this many seconds"
+        verified:
+          type: "boolean"
+          description: "false=unverified on the real robot (Jetson and G1). The UI shows a caution dialog before run / stop. Do not assert results"
+        caution:
+          type: "array"
+          items:
+            type: "string"
+          description: "Caution text the UI shows before run / stop (defined on the server side)"
+        state:
+          type: "string"
+          enum:
+            - "idle"
+            - "running"
+            - "stopping"
+        result:
+          type: "string"
+          description: "Result of the most recent run. ok / failed / stopped / timeout"
+          nullable: true
+        exit_code:
+          type: "integer"
+          description: "Exit code. Negative means a signal"
+          nullable: true
+        started_at:
+          type: "number"
+          description: "epoch seconds"
+          nullable: true
+        ended_at:
+          type: "number"
+          description: "epoch seconds. null=running or never run"
+          nullable: true
+      required:
+        - "name"
+        - "title"
+        - "description"
+        - "argv"
+        - "group"
+        - "timeout_s"
+        - "verified"
+        - "caution"
+        - "state"
+        - "result"
+        - "exit_code"
+        - "started_at"
+        - "ended_at"
+      additionalProperties: false
+    Tasks:
+      type: "object"
+      properties:
+        tasks:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/Task"
+      required:
+        - "tasks"
+      additionalProperties: false
+    TaskLogs:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        next:
+          type: "integer"
+          description: "seq of the last line. Use as since next time"
+        truncated:
+          type: "boolean"
+          description: "Part of what came after since was dropped from the ring buffer"
+        lines:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              seq:
+                type: "integer"
+              text:
+                type: "string"
+            required:
+              - "seq"
+              - "text"
+            additionalProperties: false
+      required:
+        - "name"
+        - "next"
+        - "truncated"
+        - "lines"
+      additionalProperties: false
+    TaskNamePatch:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "name from GET /api/tasks. Anything else (argv, paths) is not accepted"
+      required:
+        - "name"
+      additionalProperties: false
+    Topics:
+      type: "object"
+      properties:
+        enabled:
+          type: "boolean"
+        backend:
+          type: "string"
+          description: "local / mock"
+        deny:
+          type: "array"
+          items:
+            type: "string"
+          description: "Topics that are always refused for publishing (fnmatch). Stronger than the allowlist"
+        supported_types:
+          type: "array"
+          items:
+            type: "string"
+          description: "Types that can be read by subscribing"
+        max_subscriptions:
+          type: "integer"
+        publish:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              topic:
+                type: "string"
+              type:
+                type: "string"
+              max_bytes:
+                type: "integer"
+              min_interval_s:
+                type: "number"
+              note:
+                type: "string"
+            required:
+              - "topic"
+              - "type"
+              - "max_bytes"
+              - "min_interval_s"
+              - "note"
+            additionalProperties: false
+          description: "Publish allowlist (server-side file only. Cannot be extended from the UI)"
+        subscribed:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "enabled"
+        - "backend"
+        - "deny"
+        - "supported_types"
+        - "max_subscriptions"
+        - "publish"
+        - "subscribed"
+      additionalProperties: false
+    TopicsReceived:
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              topic:
+                type: "string"
+              type:
+                type: "string"
+              count:
+                type: "integer"
+                description: "Number of messages received"
+              age_s:
+                type: "number"
+                description: "Seconds since the last reception. null=nothing received yet"
+                nullable: true
+              message:
+                type: "object"
+                description: "Latest message (arrays up to 16 elements, strings up to 512 characters)"
+                additionalProperties: true
+                nullable: true
+            required:
+              - "topic"
+              - "type"
+              - "count"
+              - "age_s"
+              - "message"
+            additionalProperties: false
+      required:
+        - "items"
+      additionalProperties: false
+    TopicSubscribePatch:
+      type: "object"
+      properties:
+        topic:
+          type: "string"
+          description: "A name starting with rt/"
+        type:
+          type: "string"
+          description: "One of supported_types in GET /api/topics"
+      required:
+        - "topic"
+        - "type"
+      additionalProperties: false
+    TopicNamePatch:
+      type: "object"
+      properties:
+        topic:
+          type: "string"
+      required:
+        - "topic"
+      additionalProperties: false
+    TopicPublishPatch:
+      type: "object"
+      properties:
+        topic:
+          type: "string"
+          description: "A topic in the allowlist"
+        data:
+          type: "string"
+          description: "The string to send (up to max_bytes)"
+      required:
+        - "topic"
+        - "data"
+      additionalProperties: false
+    TopicSubscribed:
+      type: "object"
+      properties:
+        topic:
+          type: "string"
+        type:
+          type: "string"
+      required:
+        - "topic"
+        - "type"
+      additionalProperties: false
+    TopicUnsubscribed:
+      type: "object"
+      properties:
+        unsubscribed:
+          type: "string"
+      required:
+        - "unsubscribed"
+      additionalProperties: false
+    TopicPublished:
+      type: "object"
+      properties:
+        published:
+          type: "string"
+        bytes:
+          type: "integer"
+      required:
+        - "published"
+        - "bytes"
+      additionalProperties: false
+    ModePatch:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          description: "Only an id listed in GET /api/buttons"
+      required:
+        - "id"
+      additionalProperties: false
+    VolumePatch:
+      type: "object"
+      properties:
+        volume:
+          type: "integer"
+          minimum: 0
+          maximum: 100
+      required:
+        - "volume"
+      additionalProperties: false
+    LedPatch:
+      type: "object"
+      properties:
+        r:
+          type: "integer"
+          minimum: 0
+          maximum: 255
+        g:
+          type: "integer"
+          minimum: 0
+          maximum: 255
+        b:
+          type: "integer"
+          minimum: 0
+          maximum: 255
+      required:
+        - "r"
+        - "g"
+        - "b"
+      additionalProperties: false
+    TtsPatch:
+      type: "object"
+      properties:
+        text:
+          type: "string"
+          description: "Text to speak"
+          minLength: 1
+          maxLength: 100
+        speaker_id:
+          type: "integer"
+          description: "Speaker ID (meaning unverified)"
+          enum:
+            - 0
+            - 1
+      required:
+        - "text"
+        - "speaker_id"
+      additionalProperties: false

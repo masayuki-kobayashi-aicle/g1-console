@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Runtime state and per-machine files (never commit)
+settings.json
+data/
+
+# Raw robot captures and snapshots
+docs/g1_snapshot/
+docs/g1_logs/
+docs/g1_raw/

@@ -1,0 +1,30 @@
+# systemd unit template for the G1 development console (hub). It is only kept in the repository and is not installed automatically.
+#
+# Install (on the Jetson, run by the user with sudo):
+#   sudo cp jetson/g1-console.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now g1-console
+# Check the login URL (with token):   journalctl -u g1-console -n 20
+# Stop / remove:   sudo systemctl disable --now g1-console
+#
+# Only this hub is resident. The camera and lidar streams and tasks are neither resident nor auto-restarted (started and stopped with buttons in the UI).
+# No motion command is issued right after startup (for motion control, take the operator lock in the UI first).
+# Adjust the paths and User to the real Jetson environment (WorkingDirectory is where this repository is checked out).
+[Unit]
+Description=G1 dev console (hub)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=unitree
+WorkingDirectory=/home/unitree/g1-console
+Environment=UNITREE_SDK_DIR=/home/unitree/unitree_sdk2_python
+Environment=PYTHONUNBUFFERED=1
+# --bind-iface fails until wlan0 gets an IPv4 address, so retry until it succeeds
+ExecStart=/usr/bin/python3 server.py --local --bind-iface wlan0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
